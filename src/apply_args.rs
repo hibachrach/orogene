@@ -4,7 +4,7 @@ use clap::Args;
 use indicatif::ProgressStyle;
 use miette::Result;
 use node_maintainer::{NodeMaintainer, NodeMaintainerOptions};
-use oro_common::CorgiManifest;
+use oro_common::{CorgiManifest, ConnectionMode};
 use rand::seq::IteratorRandom;
 use tracing::{Instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
@@ -113,6 +113,9 @@ pub struct ApplyArgs {
 
     #[arg(from_global)]
     pub emoji: bool,
+
+    #[arg(from_global)]
+    pub offline: bool,
 }
 
 impl ApplyArgs {
@@ -159,7 +162,14 @@ impl ApplyArgs {
 
     fn configured_maintainer(&self) -> NodeMaintainerOptions {
         let root = &self.root;
+        let connection_mode = if self.offline {
+            ConnectionMode::Offline
+        } else {
+            ConnectionMode::Online
+        };
+
         let mut nm = NodeMaintainerOptions::new();
+
         nm = nm
             .registry(self.registry.clone())
             .locked(self.locked)
@@ -170,6 +180,7 @@ impl ApplyArgs {
             .prefer_copy(self.prefer_copy)
             .validate(self.validate)
             .hoisted(self.hoisted)
+            .connection_mode(connection_mode)
             .on_resolution_added(move || {
                 Span::current().pb_inc_length(1);
             })

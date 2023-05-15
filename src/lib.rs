@@ -227,6 +227,12 @@ pub struct Orogene {
     )]
     emoji: bool,
 
+    /// Prevent connecting to the Internet
+    ///
+    /// By default, Orogene will attempt to connect to the internet to update the cache.
+    #[arg(help_heading = "Global Options", global = true)]
+    offline: bool,
+
     /// Skip first-time setup.
     #[arg(
         help_heading = "Global Options",

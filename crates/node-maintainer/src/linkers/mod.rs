@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use hoisted::HoistedLinker;
 #[cfg(not(target_arch = "wasm32"))]
 use isolated::IsolatedLinker;
+use oro_common::ConnectionMode;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{
@@ -23,6 +24,7 @@ pub(crate) struct LinkerOptions {
     pub(crate) actual_tree: Option<Lockfile>,
     pub(crate) script_concurrency: usize,
     pub(crate) cache: Option<PathBuf>,
+    pub(crate) connection_mode: ConnectionMode,
     pub(crate) prefer_copy: bool,
     pub(crate) validate: bool,
     pub(crate) root: PathBuf,

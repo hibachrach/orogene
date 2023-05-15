@@ -5,7 +5,7 @@ use std::sync::Arc;
 use async_std::fs;
 use nassun::client::{Nassun, NassunOpts};
 use nassun::package::Package;
-use oro_common::CorgiManifest;
+use oro_common::{CorgiManifest, ConnectionMode};
 use url::Url;
 
 use crate::error::NodeMaintainerError;
@@ -41,6 +41,7 @@ pub struct NodeMaintainerOptions {
     script_concurrency: usize,
     #[allow(dead_code)]
     cache: Option<PathBuf>,
+    connection_mode: ConnectionMode,
     #[allow(dead_code)]
     prefer_copy: bool,
     #[allow(dead_code)]
@@ -72,6 +73,13 @@ impl NodeMaintainerOptions {
     pub fn cache(mut self, cache: impl AsRef<Path>) -> Self {
         self.nassun_opts = self.nassun_opts.cache(PathBuf::from(cache.as_ref()));
         self.cache = Some(PathBuf::from(cache.as_ref()));
+        self
+    }
+
+    /// Configure whether NodeMaintainer will connect to the Internet.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn connection_mode(mut self, connection_mode: ConnectionMode) -> Self {
+        self.connection_mode = connection_mode;
         self
     }
 
@@ -311,6 +319,7 @@ impl NodeMaintainerOptions {
             concurrency: self.concurrency,
             script_concurrency: self.script_concurrency,
             cache: self.cache,
+            connection_mode: self.connection_mode,
             prefer_copy: self.prefer_copy,
             validate: self.validate,
             root: proj_root,
@@ -368,6 +377,7 @@ impl NodeMaintainerOptions {
             concurrency: self.concurrency,
             script_concurrency: self.script_concurrency,
             cache: self.cache,
+            connection_mode: self.connection_mode,
             prefer_copy: self.prefer_copy,
             validate: self.validate,
             root: proj_root,
@@ -403,6 +413,7 @@ impl Default for NodeMaintainerOptions {
             locked: false,
             script_concurrency: DEFAULT_SCRIPT_CONCURRENCY,
             cache: None,
+            connection_mode: Default::default(),
             hoisted: false,
             prefer_copy: false,
             validate: false,

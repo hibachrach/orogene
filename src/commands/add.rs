@@ -44,6 +44,7 @@ impl OroCommand for AddCmd {
                 .into_diagnostic()?,
         )
         .into_diagnostic()?;
+        // FIXME: Should this fail noisily? Or ignore "offline mode" like it's doing now?
         let nassun = NassunArgs::from_apply_args(&self.apply).to_nassun();
         use PackageResolution as Pr;
         use PackageSpec as Ps;

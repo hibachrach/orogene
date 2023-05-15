@@ -28,7 +28,12 @@ impl OroCommand for PingCmd {
         let start = Instant::now();
         let registry = self.registry;
         tracing::info!("{}ping: {registry}", if self.emoji { "🗣️ " } else { "" });
-        let client = OroClient::new(registry.clone());
+        // We force an `ConnectionMode` of `ConnectionMode::Online` here because this command doesn't
+        // make sense offline
+        let client = OroClient::builder()
+            .registry(registry.clone())
+            .connection_mode(oro_common::ConnectionMode::Online)
+            .build();
         let payload = client.ping().await?;
         let time = start.elapsed().as_micros() as f32 / 1000.0;
         tracing::info!("{}pong: {time}ms", if self.emoji { "👂 " } else { "" });

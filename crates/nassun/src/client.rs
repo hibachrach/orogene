@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 
 use async_std::sync::Arc;
 use oro_client::OroClient;
-use oro_common::{CorgiManifest, CorgiPackument, CorgiVersionMetadata, Packument, VersionMetadata};
+use oro_common::{
+    ConnectionMode, CorgiManifest, CorgiPackument, CorgiVersionMetadata, Packument, VersionMetadata,
+};
 use url::Url;
 
 pub use oro_package_spec::{PackageSpec, VersionSpec};
@@ -24,6 +26,8 @@ use crate::tarball::Tarball;
 pub struct NassunOpts {
     #[cfg(not(target_arch = "wasm32"))]
     cache: Option<PathBuf>,
+    #[cfg(not(target_arch = "wasm32"))]
+    connection_mode: ConnectionMode,
     base_dir: Option<PathBuf>,
     default_tag: Option<String>,
     registries: HashMap<Option<String>, Url>,
@@ -39,6 +43,13 @@ impl NassunOpts {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn cache(mut self, cache: impl AsRef<Path>) -> Self {
         self.cache = Some(PathBuf::from(cache.as_ref()));
+        self
+    }
+
+    /// Force online or offline mode (see [`ConnectionMode`]).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn connection_mode(mut self, connection_mode: ConnectionMode) -> Self {
+        self.connection_mode = connection_mode;
         self
     }
 
@@ -91,12 +102,16 @@ impl NassunOpts {
         let mut client_builder = OroClient::builder().registry(registry);
         #[cfg(not(target_arch = "wasm32"))]
         let cache = if let Some(cache) = self.cache {
-            client_builder = client_builder.cache(cache.clone());
+            client_builder = client_builder
+                .cache(cache.clone())
+                .connection_mode(self.connection_mode);
             Arc::new(Some(cache))
         } else {
             Arc::new(None)
         };
+
         let client = client_builder.build();
+
         Nassun {
             #[cfg(not(target_arch = "wasm32"))]
             cache,

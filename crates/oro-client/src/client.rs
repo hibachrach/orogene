@@ -11,11 +11,15 @@ use reqwest::ClientBuilder;
 use reqwest_middleware::ClientWithMiddleware;
 use url::Url;
 
+use oro_common::ConnectionMode;
+
 #[derive(Clone, Debug)]
 pub struct OroClientBuilder {
     registry: Url,
     #[cfg(not(target_arch = "wasm32"))]
     cache: Option<PathBuf>,
+    #[cfg(not(target_arch = "wasm32"))]
+    connection_mode: ConnectionMode,
 }
 
 impl Default for OroClientBuilder {
@@ -24,6 +28,7 @@ impl Default for OroClientBuilder {
             registry: Url::parse("https://registry.npmjs.org").unwrap(),
             #[cfg(not(target_arch = "wasm32"))]
             cache: None,
+            connection_mode: ConnectionMode::Online,
         }
     }
 }
@@ -44,6 +49,11 @@ impl OroClientBuilder {
         self
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn connection_mode(mut self, connection_mode: ConnectionMode) -> Self {
+        self.connection_mode = connection_mode;
+        self
+    }
     pub fn build(self) -> OroClient {
         #[cfg(target_arch = "wasm32")]
         let client_uncached = Client::new();
@@ -57,12 +67,18 @@ impl OroClientBuilder {
             .expect("Failed to build HTTP client.");
 
         #[cfg(not(target_arch = "wasm32"))]
+        let cache_mode = match self.connection_mode {
+            ConnectionMode::Online => CacheMode::Default,
+            ConnectionMode::Offline => CacheMode::OnlyIfCached,
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
         let mut client_builder = reqwest_middleware::ClientBuilder::new(client_uncached.clone());
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(cache_loc) = self.cache {
             client_builder = client_builder.with(Cache(HttpCache {
-                mode: CacheMode::Default,
+                mode: cache_mode,
                 manager: CACacheManager {
                     path: cache_loc.to_string_lossy().into(),
                 },

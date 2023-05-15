@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::Args;
 use nassun::{Nassun, NassunOpts};
+use oro_common::ConnectionMode;
 use url::Url;
 
 use crate::apply_args::ApplyArgs;
@@ -23,6 +24,9 @@ pub struct NassunArgs {
 
     #[arg(from_global)]
     cache: Option<PathBuf>,
+
+    #[arg(from_global)]
+    offline: bool,
 }
 
 impl NassunArgs {
@@ -33,13 +37,21 @@ impl NassunArgs {
             scoped_registries: apply_args.scoped_registries.clone(),
             root: apply_args.root.clone(),
             cache: apply_args.cache.clone(),
+            offline: apply_args.offline,
         }
     }
 
     pub fn to_nassun(&self) -> Nassun {
+        let connection_mode = if self.offline {
+            ConnectionMode::Offline
+        } else {
+            ConnectionMode::Online
+        };
+
         let mut nassun_opts = NassunOpts::new()
             .registry(self.registry.clone())
             .base_dir(self.root.clone())
+            .connection_mode(connection_mode)
             .default_tag(&self.default_tag);
         for (scope, registry) in &self.scoped_registries {
             nassun_opts = nassun_opts.scope_registry(scope.clone(), registry.clone());

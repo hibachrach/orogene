@@ -74,6 +74,11 @@ pub enum NassunError {
     #[diagnostic(code(nassun::cache::missing_index), url(docsrs))]
     CacheMissingIndexError(String),
 
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Missing file index for cache entry for {0}. Note that orogene is in offline mode, so missing packages cannot be fetched from the internet.")]
+    #[diagnostic(code(nassun::cache::missing_index_offline_mode), url(docsrs))]
+    CacheMissingIndexWhileOfflineError(String),
+
     /// A generic IO error occurred. Refer tot he error message for more
     /// details.
     #[error(transparent)]

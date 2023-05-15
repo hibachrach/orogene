@@ -4,7 +4,9 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use async_std::sync::Arc;
-use oro_common::{CorgiPackument, CorgiVersionMetadata, Packument, VersionMetadata};
+use oro_common::{
+    ConnectionMode, CorgiPackument, CorgiVersionMetadata, Packument, VersionMetadata,
+};
 use oro_package_spec::PackageSpec;
 use ssri::Integrity;
 
@@ -133,17 +135,25 @@ impl Package {
         dir: impl AsRef<Path>,
         prefer_copy: bool,
         validate: bool,
+        connection_mode: ConnectionMode,
     ) -> Result<Integrity> {
         async fn inner(
             me: &Package,
             dir: &Path,
             prefer_copy: bool,
             validate: bool,
+            connection_mode: ConnectionMode,
         ) -> Result<Integrity> {
-            me.extract_to_dir_inner(dir, me.resolved.integrity(), prefer_copy, validate)
-                .await
+            me.extract_to_dir_inner(
+                dir,
+                me.resolved.integrity(),
+                prefer_copy,
+                validate,
+                connection_mode,
+            )
+            .await
         }
-        inner(self, dir.as_ref(), prefer_copy, validate).await
+        inner(self, dir.as_ref(), prefer_copy, validate, connection_mode).await
     }
 
     /// Extract tarball to a directory, optionally caching its contents. The
@@ -155,17 +165,19 @@ impl Package {
         dir: impl AsRef<Path>,
         prefer_copy: bool,
         validate: bool,
+        connection_mode: ConnectionMode,
     ) -> Result<Integrity> {
         async fn inner(
             me: &Package,
             dir: &Path,
             prefer_copy: bool,
             validate: bool,
+            connection_mode: ConnectionMode,
         ) -> Result<Integrity> {
-            me.extract_to_dir_inner(dir, None, prefer_copy, validate)
+            me.extract_to_dir_inner(dir, None, prefer_copy, validate, connection_mode)
                 .await
         }
-        inner(self, dir.as_ref(), prefer_copy, validate).await
+        inner(self, dir.as_ref(), prefer_copy, validate, connection_mode).await
     }
 
     /// Extract tarball to a directory, optionally caching its contents. The
@@ -178,6 +190,7 @@ impl Package {
         sri: Integrity,
         prefer_copy: bool,
         validate: bool,
+        connection_mode: ConnectionMode,
     ) -> Result<Integrity> {
         async fn inner(
             me: &Package,
@@ -185,11 +198,20 @@ impl Package {
             sri: Integrity,
             prefer_copy: bool,
             validate: bool,
+            connection_mode: ConnectionMode,
         ) -> Result<Integrity> {
-            me.extract_to_dir_inner(dir, Some(&sri), prefer_copy, validate)
+            me.extract_to_dir_inner(dir, Some(&sri), prefer_copy, validate, connection_mode)
                 .await
         }
-        inner(self, dir.as_ref(), sri, prefer_copy, validate).await
+        inner(
+            self,
+            dir.as_ref(),
+            sri,
+            prefer_copy,
+            validate,
+            connection_mode,
+        )
+        .await
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -199,6 +221,7 @@ impl Package {
         integrity: Option<&Integrity>,
         prefer_copy: bool,
         validate: bool,
+        connection_mode: ConnectionMode,
     ) -> Result<Integrity> {
         if let Some(sri) = integrity {
             if let Some(cache) = self.cache.as_deref() {
@@ -215,6 +238,13 @@ impl Package {
                     {
                         Ok(_) => return Ok(sri),
                         Err(e) => {
+                            if matches!(connection_mode, ConnectionMode::Offline) {
+                                if let NassunError::CacheMissingIndexError(missing_file) = e {
+                                    return Err(NassunError::CacheMissingIndexWhileOfflineError(
+                                        missing_file,
+                                    ));
+                                }
+                            }
                             tracing::warn!("extracting package {:?} from cache failed, possily due to cache corruption: {e}", self.resolved());
                             if let Some(entry) =
                                 cacache::index::find(cache, &crate::tarball::tarball_key(&sri))
